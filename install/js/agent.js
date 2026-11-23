@@ -10,6 +10,10 @@
 	var clicks = 0;
 	var token = null;
 	var tokenPromise = null;
+	var mouseTimes = [];
+	var mousePoints = [];
+	var keyTimes = [];
+	var startPoint = null;
 
 	document.addEventListener('mousemove', function (e) {
 		mouseMoves++;
@@ -18,17 +22,99 @@
 			var dy = e.pageY - lastY;
 			mouseDistance += Math.sqrt(dx * dx + dy * dy);
 		}
+		if (!startPoint) {
+			startPoint = { x: e.pageX, y: e.pageY };
+		}
 		lastX = e.pageX;
 		lastY = e.pageY;
+		mouseTimes.push(Date.now());
+		mousePoints.push({ x: e.pageX, y: e.pageY });
+		if (mouseTimes.length > 300) {
+			mouseTimes.shift();
+			mousePoints.shift();
+		}
 	}, { passive: true });
 
 	document.addEventListener('keydown', function () {
 		keyPresses++;
+		keyTimes.push(Date.now());
+		if (keyTimes.length > 300) {
+			keyTimes.shift();
+		}
 	}, { passive: true });
 
 	document.addEventListener('click', function () {
 		clicks++;
 	}, { passive: true });
+
+	// Среднее и дисперсия интервалов между событиями; -1 если данных мало
+	function intervalStats(times) {
+		if (times.length < 4) {
+			return { mean: -1, variance: -1 };
+		}
+		var intervals = [];
+		for (var i = 1; i < times.length; i++) {
+			intervals.push(times[i] - times[i - 1]);
+		}
+		var mean = 0;
+		for (i = 0; i < intervals.length; i++) {
+			mean += intervals[i];
+		}
+		mean = mean / intervals.length;
+		var variance = 0;
+		for (i = 0; i < intervals.length; i++) {
+			variance += (intervals[i] - mean) * (intervals[i] - mean);
+		}
+		variance = variance / intervals.length;
+		return { mean: Math.round(mean * 10) / 10, variance: Math.round(variance * 10) / 10 };
+	}
+
+	// Направленность шагов мыши по окнам из 15 шагов: R — результирующая длина единичных векторов.
+	// R -> 1: шаги окна идут строго в одну сторону (робот тянет по прямой к цели).
+	// У человека дрожание руки снижает R даже на «прямых» бросках.
+	function mouseDirectionality() {
+		var windowSize = 15;
+		if (mousePoints.length < windowSize + 1) {
+			return -1;
+		}
+		var maxR = 0;
+		var straightWindows = 0;
+		var totalWindows = 0;
+		for (var start = 0; start + windowSize <= mousePoints.length; start++) {
+			var sumX = 0;
+			var sumY = 0;
+			var count = 0;
+			var dist = 0;
+			for (var i = start + 1; i < start + windowSize; i++) {
+				var dx = mousePoints[i].x - mousePoints[i - 1].x;
+				var dy = mousePoints[i].y - mousePoints[i - 1].y;
+				var len = Math.sqrt(dx * dx + dy * dy);
+				if (len > 2) {
+					sumX += dx / len;
+					sumY += dy / len;
+					count++;
+					dist += len;
+				}
+			}
+			if (count >= windowSize - 2 && dist > 100) {
+				totalWindows++;
+				var r = Math.sqrt(sumX * sumX + sumY * sumY) / count;
+				if (r > maxR) {
+					maxR = r;
+				}
+				if (r > 0.985) {
+					straightWindows++;
+				}
+			}
+		}
+		if (maxR === 0 || totalWindows === 0) {
+			return { maxR: -1, straightRatio: -1 };
+		}
+		return {
+			maxR: Math.round(Math.min(1, maxR) * 1000) / 1000,
+			straightRatio: Math.round((straightWindows / totalWindows) * 1000) / 1000
+		};
+	}
 
 	function isNative(fn) {
 		try {
@@ -68,12 +154,21 @@
 	}
 
 	function getMetrics() {
+		var mouseStats = intervalStats(mouseTimes);
+		var keyStats = intervalStats(keyTimes);
+		var direction = mouseDirectionality();
 		return {
 			durationMs: Date.now() - startTs,
 			mouseMoves: mouseMoves,
 			mouseDistance: Math.round(mouseDistance),
 			keyPresses: keyPresses,
-			clicks: clicks
+			clicks: clicks,
+			mouseIntMean: mouseStats.mean,
+			mouseIntVar: mouseStats.variance,
+			mouseStraight: direction.maxR,
+			mouseStraightRatio: direction.straightRatio,
+			keyIntMean: keyStats.mean,
+			keyIntVar: keyStats.variance
 		};
 	}
 

@@ -70,6 +70,31 @@ class Score
             $reasons[] = 'behavior:no_clicks';
         }
 
+        // Роботизированный ввод: аномально ровные интервалы между клавишами
+        // (у живого быстрого печатника дисперсия обычно в разы выше)
+        $keyIntVar = (float)($metrics['keyIntVar'] ?? -1);
+        $keyIntMean = (float)($metrics['keyIntMean'] ?? -1);
+        if ($keyPresses >= 6 && $keyIntVar >= 0 && $keyIntVar < 350 && $keyIntMean >= 0 && $keyIntMean < 150) {
+            $score += 30;
+            $reasons[] = 'behavior:robotic_typing';
+        }
+
+        // Траектория мыши состоит из идеально прямых сегментов (робот тянется к цели по линии).
+        // Одиночный прямой бросок у человека — норма, флагается только системная прямолинейность.
+        $mouseStraight = (float)($metrics['mouseStraight'] ?? -1);
+        $straightRatio = (float)($metrics['mouseStraightRatio'] ?? -1);
+        if ($mouseMoves >= 15 && $mouseStraight > 0.985 && $straightRatio >= 0.8) {
+            $score += 20;
+            $reasons[] = 'behavior:straight_mouse';
+        }
+
+        // Константные интервалы между событиями мыши (таймерный бот)
+        $mouseIntVar = (float)($metrics['mouseIntVar'] ?? -1);
+        if ($mouseMoves >= 10 && $mouseIntVar >= 0 && $mouseIntVar < 3) {
+            $score += 15;
+            $reasons[] = 'behavior:robotic_mouse';
+        }
+
         $score = min(100, $score);
 
         if ($score >= Settings::blockScore()) {
