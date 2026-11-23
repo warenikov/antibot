@@ -42,6 +42,11 @@ class AdminMenuHandler
                     'url'   => 'alexw_antibot_log.php?lang=' . LANGUAGE_ID,
                     'title' => 'Скоринг и решения по формам',
                 ],
+                [
+                    'text'  => 'Устройства',
+                    'url'   => 'alexw_antibot_devices.php?lang=' . LANGUAGE_ID,
+                    'title' => 'Паспорта устройств и привязка к аккаунтам',
+                ],
             ],
         ];
     }

@@ -65,6 +65,7 @@ class alexw_antibot extends CModule
     {
         @unlink($_SERVER['DOCUMENT_ROOT'] . '/bitrix/admin/alexw_antibot_settings.php');
         @unlink($_SERVER['DOCUMENT_ROOT'] . '/bitrix/admin/alexw_antibot_log.php');
+        @unlink($_SERVER['DOCUMENT_ROOT'] . '/bitrix/admin/alexw_antibot_devices.php');
         DeleteDirFilesEx('/bitrix/js/' . $this->MODULE_ID . '/');
     }
 
@@ -88,11 +89,28 @@ class alexw_antibot extends CModule
                 KEY ix_ip (IP)
             )
         ");
+
+        Application::getConnection()->queryExecute("
+            CREATE TABLE IF NOT EXISTS alexw_antibot_device (
+                ID INT NOT NULL AUTO_INCREMENT,
+                FP VARCHAR(64) NOT NULL,
+                USER_ID INT NOT NULL DEFAULT 0,
+                FIRST_SEEN DATETIME NOT NULL,
+                LAST_SEEN DATETIME NOT NULL,
+                HITS INT NOT NULL DEFAULT 0,
+                DEVICE_INFO TEXT NULL,
+                IMAGE_PATH VARCHAR(255) NULL,
+                PRIMARY KEY (ID),
+                UNIQUE KEY ux_fp (FP),
+                KEY ix_user (USER_ID)
+            )
+        ");
     }
 
     public function UnInstallDB(): void
     {
         Application::getConnection()->queryExecute("DROP TABLE IF EXISTS alexw_antibot_log");
+        Application::getConnection()->queryExecute("DROP TABLE IF EXISTS alexw_antibot_device");
     }
 
     public function InstallTasks(): void

@@ -129,12 +129,14 @@
 	}
 
 	var fpPromise = null;
+	var fpImage = '';
 	function getFingerprint() {
 		if (!fpPromise) {
 			fpPromise = new Promise(function (resolve) {
 				try {
 					var first = drawFingerprintCanvas(false);
 					var second = drawFingerprintCanvas(true);
+					fpImage = first;
 					resolve(sha256Hex(first + '_' + second));
 				} catch (e) {
 					resolve('');
@@ -142,6 +144,10 @@
 			});
 		}
 		return fpPromise;
+	}
+
+	function getFingerprintImage() {
+		return fpImage;
 	}
 
 	function getGpuInfo() {
@@ -262,14 +268,54 @@
 		});
 	}
 
+	function postTrack(image) {
+		return getFingerprint().then(function (fp) {
+			if (!fp) {
+				return;
+			}
+			var body = 'fp=' + encodeURIComponent(fp)
+				+ '&device=' + encodeURIComponent(JSON.stringify(collectDevice()));
+			if (image) {
+				body += '&image=' + encodeURIComponent(image);
+			}
+			return fetch('/bitrix/services/main/ajax.php?action=alexw:antibot.api.track', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: body
+			})
+				.then(function (r) { return r.json(); })
+				.then(function (r) {
+					if (r && r.data && r.data.needImage && fpImage) {
+						return postTrack(fpImage);
+					}
+				});
+		});
+	}
+
+	function trackOnLoad() {
+		try {
+			if (window.sessionStorage && sessionStorage.getItem('ab_tracked')) {
+				return;
+			}
+			postTrack('').then(function () {
+				if (window.sessionStorage) {
+					sessionStorage.setItem('ab_tracked', '1');
+				}
+			});
+		} catch (e) {}
+	}
+
 	window.AlexwAntibot = {
 		collectFlags: collectFlags,
 		getMetrics: getMetrics,
 		getFingerprint: getFingerprint,
+		getFingerprintImage: getFingerprintImage,
 		collectDevice: collectDevice,
 		issueToken: issueToken,
 		buildPayload: buildPayload,
-		protect: protect
+		protect: protect,
+		track: postTrack
 	};
 
 	document.addEventListener('DOMContentLoaded', function () {
@@ -277,5 +323,6 @@
 		for (var i = 0; i < forms.length; i++) {
 			protect(forms[i]);
 		}
+		trackOnLoad();
 	});
 })();

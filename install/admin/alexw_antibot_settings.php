@@ -30,6 +30,7 @@ $fields = [
     'token_ttl'     => '3600',
     'ip_whitelist'  => '',
     'ip_blacklist'  => '',
+    'save_fp_image' => 'N',
 ];
 
 if (!empty($_POST['Update']) && check_bitrix_sessid()) {
@@ -40,6 +41,7 @@ if (!empty($_POST['Update']) && check_bitrix_sessid()) {
     Option::set($mid, 'token_ttl', (string)max(60, (int)$_POST['token_ttl']));
     Option::set($mid, 'ip_whitelist', mb_substr((string)$_POST['ip_whitelist'], 0, 4000));
     Option::set($mid, 'ip_blacklist', mb_substr((string)$_POST['ip_blacklist'], 0, 4000));
+    Option::set($mid, 'save_fp_image', !empty($_POST['save_fp_image']) ? 'Y' : 'N');
     LocalRedirect($APPLICATION->GetCurPage() . '?lang=' . LANGUAGE_ID . '&saved=Y');
 }
 
@@ -97,6 +99,10 @@ $tabControl->BeginNextTab();
 <tr>
     <td>Чёрный список IP:</td>
     <td><textarea name="ip_blacklist" rows="4" cols="45"><?= htmlspecialchars($values['ip_blacklist']) ?></textarea></td>
+</tr>
+<tr>
+    <td>Сохранять картинку canvas-фингерпринта:<br><small>PNG устройства в /upload/alexw.antibot/fp/, один раз на устройство</small></td>
+    <td><input type="checkbox" name="save_fp_image" value="Y"<?= $values['save_fp_image'] === 'Y' ? ' checked' : '' ?>></td>
 </tr>
 
 <?php

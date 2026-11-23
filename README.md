@@ -8,12 +8,14 @@
 - **Поведенческий скоринг:** время заполнения формы, движения/дистанция мыши, клики, клавиши, honeypot-поле.
 - **Паспорт устройства:** canvas-фингерпринт (SHA-256 от растеризации текста несуществующим шрифтом + дуг, стабилен в инкогнито) + сбор железа (GPU через WebGL, экран×DPR, платформа, ядра, память, таймзона).
 - **Привязка токена к устройству:** fp зашивается в токен при выдаче; payload с чужого устройства получает `fpMismatch` (+40).
+- **Трекинг устройств на каждом хите:** fp считается за ~13 мс (canvas 12,9 мс + SHA-256 0,5 мс), отправляется раз в сессию; таблица `alexw_antibot_device` ведёт fp → user_id, хиты, железо; картинка canvas сохраняется в `/upload/alexw.antibot/fp/<hash>.png` (опция `save_fp_image`, дедуп по хешу).
 - **Решения:** pass / captcha / block по порогам в настройках; журнал всех проверок с устройством в админке.
 
 ## API
 
 - `POST /bitrix/services/main/ajax.php?action=alexw:antibot.api.issue` (поле `fp`) → `{token, iat}`
 - `POST ...?action=alexw:antibot.api.check` (поля `token`, `payload`) → `{ok, decision, score, reasons}`
+- `POST ...?action=alexw:antibot.api.track` (поля `fp`, `device`, опционально `image`) → `{ok, needImage?}`
 - Интеграция в свою форму: `\Alexw\Antibot\Guard::check($token, $payloadJson)` на сервере; JS — `window.AlexwAntibot.protect(form)` или атрибут `data-antibot` на форме.
 
 ## Структура

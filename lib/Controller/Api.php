@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Alexw\Antibot\Controller;
 
+use Alexw\Antibot\DeviceTracker;
 use Alexw\Antibot\Guard;
 use Alexw\Antibot\TokenService;
 use Bitrix\Main\Engine\Controller;
@@ -16,6 +17,7 @@ class Api extends Controller
         return [
             'issue' => ['prefilters' => []],
             'check' => ['prefilters' => []],
+            'track' => ['prefilters' => []],
         ];
     }
 
@@ -35,5 +37,18 @@ class Api extends Controller
         }
 
         return Guard::check($token, $payload);
+    }
+
+    public function trackAction(string $fp = '', string $device = '', string $image = ''): array
+    {
+        $deviceInfo = [];
+        if ($device !== '') {
+            $decoded = json_decode($device, true);
+            if (is_array($decoded)) {
+                $deviceInfo = $decoded;
+            }
+        }
+
+        return DeviceTracker::track($fp, $deviceInfo, $image);
     }
 }
